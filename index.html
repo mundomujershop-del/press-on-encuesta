@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encuesta · Uñas Press-On</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f0eb;
+      --accent: #c4886a;
+      --text: #2a1a12;
+      --muted: #9b7d70;
+      --border: #ddc9bd;
+    }
+
+    body {
+      font-family: Georgia, 'Times New Roman', serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 5rem 1.25rem 3rem;
+    }
+
+    /* ── Progress bar ── */
+    .progress-track {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+      z-index: 100;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      transition: width 0.45s cubic-bezier(0.4, 0, 0.2, 1);
+      width: 0%;
+    }
+
+    /* ── Fixed chrome ── */
+    .chrome-brand {
+      position: fixed;
+      top: 14px; left: 20px;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .chrome-counter {
+      position: fixed;
+      top: 14px; right: 20px;
+      font-size: 0.72rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Form wrap ── */
+    .form-wrap {
+      width: 100%;
+      max-width: 560px;
+      position: relative;
+    }
+
+    /* ── Question slides ── */
+    .question {
+      display: none;
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.38s ease, transform 0.38s ease;
+    }
+    .question.active  { display: block; }
+    .question.visible { opacity: 1; transform: translateY(0); }
+    .question.leaving { opacity: 0; transform: translateY(-20px); }
+
+    /* ── Question header ── */
+    .q-num {
+      font-size: 0.68rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 0.55rem;
+    }
+    .q-text {
+      font-size: clamp(1.15rem, 3.8vw, 1.55rem);
+      line-height: 1.45;
+      font-style: italic;
+      color: var(--text);
+      margin-bottom: 1.8rem;
+    }
+    .q-hint {
+      font-style: normal;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: -1.4rem;
+      margin-bottom: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+
+    /* ── Options ── */
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-bottom: 2.2rem;
+    }
+    .opt {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.8rem 1rem;
+      background: transparent;
+      border: 1.5px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      text-align: left;
+      font-family: Georgia, serif;
+      font-size: 0.92rem;
+      color: var(--text);
+      width: 100%;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .opt:hover {
+      border-color: var(--accent);
+      background: rgba(196,136,106,0.04);
+    }
+    .opt.selected {
+      border-color: var(--accent);
+      background: rgba(196,136,106,0.08);
+    }
+    .diamond {
+      font-size: 0.95rem;
+      color: var(--border);
+      flex-shrink: 0;
+      transition: color 0.18s;
+      user-select: none;
+      line-height: 1;
+    }
+    .opt.selected .diamond { color: var(--accent); }
+
+    /* ── Navigation ── */
+    .nav {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-back {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: Georgia, serif;
+      font-size: 0.84rem;
+      color: var(--muted);
+      padding: 0.4rem 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+      transition: opacity 0.15s;
+    }
+    .btn-back:disabled { opacity: 0; pointer-events: none; }
+    .btn-next {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 0.78rem 2rem;
+      font-family: Georgia, serif;
+      font-size: 0.88rem;
+      letter-spacing: 0.07em;
+      cursor: pointer;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: opacity 0.18s;
+    }
+    .btn-next:hover { opacity: 0.88; }
+    .btn-next:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Error message ── */
+    .err {
+      font-size: 0.76rem;
+      color: #b03030;
+      margin-top: -1.6rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .err.show { display: block; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 13px;
+      height: 13px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Success screen ── */
+    .success {
+      display: none;
+      text-align: center;
+      max-width: 440px;
+      padding: 1rem;
+    }
+    .success.active { display: block; }
+    .success-mark {
+      font-size: 2.2rem;
+      color: var(--accent);
+      margin-bottom: 1.4rem;
+      animation: popIn 0.5s ease forwards;
+    }
+    @keyframes popIn {
+      from { transform: scale(0.6); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+    .success h2 {
+      font-size: 1.55rem;
+      font-style: italic;
+      margin-bottom: 0.9rem;
+    }
+    .success p {
+      font-size: 0.93rem;
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    @media (max-width: 480px) {
+      body { justify-content: flex-start; padding-top: 5rem; }
+      .q-text { margin-bottom: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="progress-track"><div class="progress-fill" id="pFill"></div></div>
+<div class="chrome-brand">Press&#8202;·&#8202;On</div>
+<div class="chrome-counter" id="pCounter">1 / 10</div>
+
+<div class="form-wrap" id="formWrap"></div>
+
+<div class="success" id="successScreen">
+  <div class="success-mark">◆</div>
+  <h2>¡Muchas gracias!</h2>
+  <p>Tu opinión es muy valiosa para nosotras.<br>La tendremos muy en cuenta para crear algo que realmente te encante.</p>
+</div>
+
+<script>
+// ── CONFIG ───────────────────────────────────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwSSSQOTwOSX11kQQ--PSvxJr1-AGxYkSIQmEW9hkQ3eM-1WfTWUY6ywi9Y-q3PiKcn/exec';
+
+// ── QUESTIONS ────────────────────────────────────────────────────────────────
+const QUESTIONS = [
+  {
+    id: 'q1', type: 'single',
+    text: '¿Con qué frecuencia te haces las uñas?',
+    options: ['Cada semana', 'Cada 2–3 semanas', 'Una vez al mes',
+              'Solo para ocasiones especiales', 'Casi nunca']
+  },
+  {
+    id: 'q2', type: 'single',
+    text: '¿Dónde te las haces normalmente?',
+    options: ['En un salón / nail bar', 'En casa yo misma',
+              'Las dos opciones', 'No me las hago']
+  },
+  {
+    id: 'q3', type: 'single',
+    text: '¿Cuánto gastas normalmente cada vez que te haces las uñas?',
+    options: ['Menos de $15.000', '$15.000 – $35.000',
+              '$35.000 – $60.000', 'Más de $60.000']
+  },
+  {
+    id: 'q4', type: 'single',
+    text: '¿Conoces las uñas press-on?',
+    options: ['Sí, las conozco bien', 'Las he visto pero no sé mucho',
+              'No las conocía']
+  },
+  {
+    id: 'q5', type: 'single',
+    text: '¿Las has usado alguna vez?',
+    options: ['Sí y me gustaron', 'Sí pero no me convencieron',
+              'No, nunca las he probado']
+  },
+  {
+    id: 'q6', type: 'single',
+    text: '¿Qué tan importante es para ti cambiar el diseño de tus uñas con frecuencia?',
+    options: ['Muy importante, me encanta variar', 'Algo importante',
+              'Poco importante', 'No me importa mucho']
+  },
+  {
+    id: 'q7', type: 'single',
+    text: '¿Cuánto pagarías por unas press-on de buena calidad, listas para pegar y reutilizables?',
+    options: ['Menos de $20.000', '$20.000 – $40.000', '$40.000 – $60.000',
+              'Más de $60.000', 'No las compraría']
+  },
+  {
+    id: 'q8', type: 'multi',
+    text: '¿Qué te detendría de comprarlas?',
+    hint: 'Puedes marcar varias opciones.',
+    options: ['El precio', 'No sé si duran lo suficiente', 'Prefiero ir al salón',
+              'No sé cómo ponérselas', 'Me preocupa que se vean artificiales',
+              'No me interesa este tipo de producto']
+  },
+  {
+    id: 'q9', type: 'multi',
+    text: '¿Qué te motivaría más a comprarlas?',
+    hint: 'Puedes marcar varias opciones.',
+    options: ['Que duren bastante tiempo', 'Que se vean naturales y elegantes',
+              'Que sean más económicas que el salón', 'Ver reseñas reales de otras mujeres',
+              'Poder cambiar de diseño fácilmente', 'Que lleguen rápido a mi casa']
+  },
+  {
+    id: 'q10', type: 'single',
+    text: '¿Cuántos años tienes?',
+    options: ['Menos de 18', '18 – 24', '25 – 32', '33 – 40', 'Más de 40']
+  }
+];
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let current = 0;
+const answers = {};
+
+// ── BUILD DOM ────────────────────────────────────────────────────────────────
+function build() {
+  const wrap = document.getElementById('formWrap');
+  const total = QUESTIONS.length;
+
+  QUESTIONS.forEach((q, i) => {
+    const slide = document.createElement('div');
+    slide.className = 'question';
+    slide.id = `slide-${i}`;
+
+    const optsHtml = q.options.map(opt => `
+      <button type="button" class="opt" data-q="${q.id}" data-val="${escHtml(opt)}" data-idx="${i}">
+        <span class="diamond">◇</span><span>${escHtml(opt)}</span>
+      </button>`).join('');
+
+    const isLast = i === total - 1;
+
+    slide.innerHTML = `
+      <p class="q-num">${String(i + 1).padStart(2, '0')} / ${total}</p>
+      <h2 class="q-text">${escHtml(q.text)}</h2>
+      ${q.hint ? `<p class="q-hint">${escHtml(q.hint)}</p>` : ''}
+      <div class="options">${optsHtml}</div>
+      <p class="err" id="err-${i}">Por favor selecciona al menos una opción.</p>
+      <div class="nav">
+        <button class="btn-back" id="back-${i}" onclick="goBack()" ${i === 0 ? 'disabled' : ''}>← Volver</button>
+        <button class="btn-next" id="next-${i}" onclick="goNext()">
+          ${isLast ? 'Enviar respuestas' : 'Continuar'}
+        </button>
+      </div>`;
+
+    wrap.appendChild(slide);
+  });
+
+  wrap.querySelectorAll('.opt').forEach(btn => btn.addEventListener('click', onOption));
+}
+
+// Minimal HTML escaping to prevent XSS from option values used in data-val
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── OPTION HANDLER ───────────────────────────────────────────────────────────
+function onOption(e) {
+  const btn = e.currentTarget;
+  const qId = btn.dataset.q;
+  const val  = btn.dataset.val;
+  const idx  = parseInt(btn.dataset.idx, 10);
+  const q    = QUESTIONS[idx];
+
+  if (q.type === 'single') {
+    document.querySelectorAll(`.opt[data-q="${qId}"]`).forEach(b => {
+      b.classList.remove('selected');
+      b.querySelector('.diamond').textContent = '◇';
+    });
+    btn.classList.add('selected');
+    btn.querySelector('.diamond').textContent = '◆';
+    answers[qId] = val;
+  } else {
+    btn.classList.toggle('selected');
+    const sel = btn.classList.contains('selected');
+    btn.querySelector('.diamond').textContent = sel ? '◆' : '◇';
+    if (!answers[qId]) answers[qId] = [];
+    if (sel) { answers[qId].push(val); }
+    else      { answers[qId] = answers[qId].filter(v => v !== val); }
+  }
+
+  document.getElementById(`err-${idx}`).classList.remove('show');
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────────────────────
+function showSlide(nextIdx) {
+  const slides = document.querySelectorAll('.question');
+
+  // Exit current
+  const cur = slides[current];
+  cur.classList.add('leaving');
+  setTimeout(() => cur.classList.remove('active', 'visible', 'leaving'), 380);
+
+  current = nextIdx;
+
+  // Enter next
+  const nxt = slides[current];
+  nxt.classList.add('active');
+  requestAnimationFrame(() => requestAnimationFrame(() => nxt.classList.add('visible')));
+
+  // Progress
+  const pct = (current / QUESTIONS.length) * 100;
+  document.getElementById('pFill').style.width = pct + '%';
+  document.getElementById('pCounter').textContent = `${current + 1} / ${QUESTIONS.length}`;
+
+  // Back btn
+  const back = document.getElementById(`back-${current}`);
+  if (back) back.disabled = current === 0;
+
+  // Restore saved selections
+  restoreSelections(current);
+}
+
+function restoreSelections(idx) {
+  const q = QUESTIONS[idx];
+  const saved = answers[q.id];
+  if (!saved) return;
+  document.querySelectorAll(`.opt[data-q="${q.id}"]`).forEach(btn => {
+    const hit = q.type === 'single'
+      ? saved === btn.dataset.val
+      : saved.includes(btn.dataset.val);
+    btn.classList.toggle('selected', hit);
+    btn.querySelector('.diamond').textContent = hit ? '◆' : '◇';
+  });
+}
+
+function validate() {
+  const q = QUESTIONS[current];
+  const a = answers[q.id];
+  if (!a || (Array.isArray(a) && a.length === 0)) {
+    document.getElementById(`err-${current}`).classList.add('show');
+    return false;
+  }
+  return true;
+}
+
+function goNext() {
+  if (!validate()) return;
+  if (current < QUESTIONS.length - 1) { showSlide(current + 1); }
+  else { submitForm(); }
+}
+
+function goBack() {
+  if (current > 0) showSlide(current - 1);
+}
+
+// ── SUBMIT ───────────────────────────────────────────────────────────────────
+async function submitForm() {
+  const btn = document.getElementById(`next-${current}`);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Enviando…';
+
+  const payload = { timestamp: new Date().toISOString(), ...answers };
+
+  if (APPS_SCRIPT_URL === 'TU_URL_AQUI') {
+    // Demo mode: show success without a real endpoint
+    setTimeout(showSuccess, 800);
+    return;
+  }
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',              // Apps Script CORS workaround
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload)
+    });
+    showSuccess();
+  } catch (_) {
+    btn.disabled = false;
+    btn.textContent = 'Enviar respuestas';
+    const err = document.getElementById(`err-${current}`);
+    err.textContent = 'Error al enviar. Intenta de nuevo.';
+    err.classList.add('show');
+  }
+}
+
+function showSuccess() {
+  document.getElementById('formWrap').style.display = 'none';
+  document.getElementById('pCounter').style.display  = 'none';
+  document.getElementById('pFill').style.width = '100%';
+  document.getElementById('successScreen').classList.add('active');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+build();
+
+// Show first slide
+const first = document.getElementById('slide-0');
+first.classList.add('active');
+requestAnimationFrame(() => requestAnimationFrame(() => first.classList.add('visible')));
+document.getElementById('pFill').style.width = '0%';
+</script>
+</body>
+</html>
